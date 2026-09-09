@@ -1,0 +1,64 @@
+.sc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.sc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sc-header-left .page-title {
+  margin-bottom: 0;
+}
+.sc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.sc-card {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sc-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sc-card-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.sc-card-owner {
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+.sc-card-date {
+  font-size: 0.82rem;
+  color: #9ca3af;
+}
+
+.sc-card-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.sc-card-actions .btn-primary,
+.sc-card-actions .btn-danger {
+  flex: 1;
+}

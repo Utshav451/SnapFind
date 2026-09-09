@@ -1,0 +1,35 @@
+.ac-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 3rem;
+}
+
+.ac-card {
+  width: 100%;
+  max-width: 480px;
+}
+
+.ac-desc {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.ac-input {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.ac-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.ac-actions .btn-primary,
+.ac-actions .btn-secondary {
+  flex: 1;
+}
