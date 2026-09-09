@@ -34,6 +34,7 @@ public class FaceService {
     private final PhotoRepository photoRepository;
     private final FaceEmbeddingRepository faceEmbeddingRepository;
     private final RestTemplate restTemplate;
+    private final S3Service s3Service;
 
     @Value("${app.python-service-url}")
     private String pythonServiceUrl;
@@ -41,15 +42,23 @@ public class FaceService {
     @Value("${app.face-similarity-threshold}")
     private double threshold;
 
-    @Value("${app.upload-dir}")
-    private String uploadDir;
+    // PREVIOUS LOCAL UPLOAD DIR:
+    // @Value("${app.upload-dir}")
+    // private String uploadDir;
 
     //Extract all face embeddings from photo and save
     @Async
     public void extractAndSaveEmbedding(Photo photo) {
         try {
+            /*
+            //PREVIOUS LOCAL FILE EXTRACTION:
             List<float[]> embeddings =
                     callPythonExtract(photo.getFilePath());
+            */
+
+            //AWS S3 FILE EXTRACTION
+            byte[] photoBytes = s3Service.downloadFileBytes(photo.getFilePath());
+            List<float[]> embeddings = callPythonExtract(photoBytes, photo.getOriginalName());
 
             if (embeddings != null && !embeddings.isEmpty()) {
                 for (float[] embedding : embeddings) {
@@ -79,6 +88,8 @@ public class FaceService {
         System.out.println("=== FACE SEARCH STARTED ===");
         System.out.println("Collection ID: " + collectionId);
 
+        /*
+        // PREVIOUS LOCAL TEMP FILE CODE
         String tempFilename = "temp_" + UUID.randomUUID() + "_"
                 + selfie.getOriginalFilename();
         Path tempPath = Paths.get(uploadDir, tempFilename);
@@ -90,6 +101,18 @@ public class FaceService {
             System.out.println("Calling Python extract...");
             List<float[]> selfieEmbeddings =
                     callPythonExtract(tempPath.toString());
+        ...
+        } finally {
+            Files.deleteIfExists(tempPath);
+        }
+        */
+
+        // IN-MEMORY SELFIE PROCESSING (NO DISK WRITE):
+        try {
+            System.out.println("Calling Python extract with selfie in-memory bytes...");
+            byte[] selfieBytes = selfie.getBytes();
+            List<float[]> selfieEmbeddings =
+                    callPythonExtract(selfieBytes, selfie.getOriginalFilename());
 
             System.out.println("Python response received");
             System.out.println("Embeddings null? " + (selfieEmbeddings == null));
@@ -139,11 +162,11 @@ public class FaceService {
             System.out.println("Error message: " + e.getMessage());
             e.printStackTrace();
             throw e;
-        } finally {
-            Files.deleteIfExists(tempPath);
         }
     }
 
+    /*
+    // PREVIOUS LOCAL FILE PYTHON EXTRACT
     //Call Python /extract —> returns list of embeddings
     private List<float[]> callPythonExtract(String filePath) {
         try {
@@ -153,6 +176,53 @@ public class FaceService {
             MultiValueMap<String, Object> body =
                 new LinkedMultiValueMap<>();
             body.add("file", new FileSystemResource(filePath));
+
+            HttpEntity<MultiValueMap<String, Object>> request =
+                new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                pythonServiceUrl + "/extract", request, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK
+                    && response.getBody() != null) {
+
+                List<List<Double>> embeddingsList =
+                    (List<List<Double>>) response.getBody()
+                        .get("embeddings");
+
+                if (embeddingsList != null && !embeddingsList.isEmpty()) {
+                    return embeddingsList.stream().map(embList -> {
+                        float[] embedding = new float[embList.size()];
+                        for (int i = 0; i < embList.size(); i++) {
+                            embedding[i] = embList.get(i).floatValue();
+                        }
+                        return embedding;
+                    }).collect(Collectors.toList());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Python service call failed: "
+                + e.getMessage());
+        }
+        return null;
+    }
+    */
+
+    //IN-MEMORY BYTE[] PYTHON EXTRACT (S3 & SELFIE):
+    private List<float[]> callPythonExtract(byte[] imageBytes, String filename) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            org.springframework.core.io.ByteArrayResource resource =
+                    new org.springframework.core.io.ByteArrayResource(imageBytes) {
+                        @Override
+                        public String getFilename() {
+                            return filename != null ? filename : "image.jpg";
+                        }
+                    };
+            body.add("file", resource);
 
             HttpEntity<MultiValueMap<String, Object>> request =
                 new HttpEntity<>(body, headers);

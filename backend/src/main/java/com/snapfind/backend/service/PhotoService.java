@@ -30,20 +30,24 @@ public class PhotoService {
     private final AuthUtil authUtil;
     private final FaceService faceService;
     private final GuestCollectionRepository guestCollectionRepository;
+    private final S3Service s3Service;
 
-    @Value("${app.upload-dir}")
-    private String uploadDir;
+    // PREVIOUS LOCAL STORAGE CONFIG:
+    // @Value("${app.upload-dir}")
+    // private String uploadDir;
 
     //Manual constructor with @Lazy on FaceService
     public PhotoService(PhotoRepository photoRepository,
                         CollectionRepository collectionRepository,
                         AuthUtil authUtil,
                         GuestCollectionRepository guestCollectionRepository,
+                        S3Service s3Service,
                         @Lazy FaceService faceService) {
         this.photoRepository = photoRepository;
         this.collectionRepository = collectionRepository;
         this.authUtil = authUtil;
-        this.guestCollectionRepository=guestCollectionRepository;
+        this.guestCollectionRepository = guestCollectionRepository;
+        this.s3Service = s3Service;
         this.faceService = faceService;
     }
 
@@ -65,6 +69,8 @@ public class PhotoService {
             throw new ForbiddenException("You do not have access to this collection");
         }
 
+        /*
+        //PREVIOUS LOCAL STORAGE IMPLEMENTATION:
         Path uploadPath = Paths.get(uploadDir);
         Files.createDirectories(uploadPath);
 
@@ -87,6 +93,33 @@ public class PhotoService {
             } catch (IOException e) {
                 throw new RuntimeException("Failed to upload: "
                         + file.getOriginalFilename());
+            }
+        }).collect(Collectors.toList());
+        */
+
+        //AWS S3 STORAGE IMPLEMENTATION:
+        return files.stream().map(file -> {
+            try {
+                String filename = "photos/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
+                String contentType = file.getContentType() != null ? file.getContentType() : "image/jpeg";
+
+                //Upload directly to AWS S3 bucket
+                s3Service.uploadFile(filename, file.getInputStream(), file.getSize(), contentType);
+
+                Photo photo = new Photo();
+                photo.setCollection(collection);
+                photo.setFilePath(filename); //Store S3 object key
+                photo.setOriginalName(file.getOriginalFilename());
+                Photo savedPhoto = photoRepository.save(photo);
+
+                //Background face recognition extraction from S3
+                faceService.extractAndSaveEmbedding(savedPhoto);
+
+                return toResponse(savedPhoto);
+
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to upload to S3: "
+                        + file.getOriginalFilename(), e);
             }
         }).collect(Collectors.toList());
     }
@@ -113,20 +146,38 @@ public class PhotoService {
             throw new ForbiddenException("You are not the owner of this photo");
         }
 
+        /*
+        // PREVIOUS LOCAL STORAGE DELETE:
         try {
             Files.deleteIfExists(Paths.get(photo.getFilePath()));
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete photo file");
         }
+        */
+
+        //AWS S3 DELETE:
+        s3Service.deleteFile(photo.getFilePath());
 
         photoRepository.delete(photo);
     }
 
-    //Get raw file path for serving the image
+    /*
+    // PREVIOUS LOCAL FILE PATH RETRIEVAL:
     public Path getPhotoFilePath(Long photoId) {
         Photo photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Photo not found"));
         return Paths.get(photo.getFilePath());
+    }
+    */
+
+    //AWS S3 PHOTO RETRIEVAL
+    public Photo getPhotoById(Long photoId) {
+        return photoRepository.findById(photoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Photo not found"));
+    }
+
+    public byte[] getPhotoBytes(String key) throws IOException {
+        return s3Service.downloadFileBytes(key);
     }
 
     //Convert Photo to PhotoResponse DTO

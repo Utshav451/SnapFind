@@ -50,8 +50,10 @@ public class PhotoController {
         return ResponseEntity.noContent().build();
     }
 
-    //GET /api/photos/{photoId}/file
-    //Serve the actual image file for display or download
+    /*
+    // PREVIOUS LOCAL STORAGE SERVING CODE
+    // GET /api/photos/{photoId}/file
+    // Serve the actual image file for display or download
     @GetMapping("/photos/{photoId}/file")
     public ResponseEntity<Resource> getPhotoFile(
             @PathVariable Long photoId)
@@ -71,6 +73,31 @@ public class PhotoController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "inline; filename=\""
                                 + filePath.getFileName().toString() + "\"")
+                .body(resource);
+    }
+    */
+
+    // AWS S3 PHOTO SERVING CODE
+    @GetMapping("/photos/{photoId}/file")
+    public ResponseEntity<Resource> getPhotoFile(
+            @PathVariable Long photoId)
+            throws IOException {
+
+        var photo = photoService.getPhotoById(photoId);
+        byte[] data = photoService.getPhotoBytes(photo.getFilePath());
+        org.springframework.core.io.ByteArrayResource resource =
+                new org.springframework.core.io.ByteArrayResource(data);
+
+        String originalName = photo.getOriginalName() != null ? photo.getOriginalName() : "photo.jpg";
+        String contentType = "image/jpeg";
+        if (originalName.toLowerCase().endsWith(".png")) {
+            contentType = "image/png";
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + originalName + "\"")
                 .body(resource);
     }
 }
