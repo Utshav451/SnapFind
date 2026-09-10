@@ -44,12 +44,19 @@ public class SecurityConfig {
         return http.build();
     }
 
-    //Allow React (localhost:5173) to call Spring Boot (localhost:8080)
+    //Allow React (localhost:5173 or deployed EC2 / domain) to call Spring Boot
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+
+        /*
+        // PREVIOUS LOCALHOST CORS:
         config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        */
+
+        // ALLOW ALL ORIGINS (EC2 IP, localhost, custom domain)
+        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

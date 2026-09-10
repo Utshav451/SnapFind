@@ -52,6 +52,20 @@ public class JwtUtil {
     }
 
     private Key getKey() {
+        /*
+        // PREVIOUS KEY GENERATION:
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        */
+
+        // Ensures key is >= 256 bits (32 bytes) regardless of secret string length
+        byte[] keyBytes = jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            try {
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                keyBytes = md.digest(keyBytes);
+            } catch (Exception ignored) {
+            }
+        }
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }

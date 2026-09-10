@@ -55,11 +55,34 @@ jobs:
             AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
             EOF
 
-            echo "Building and starting Docker containers..."
+            echo "Stopping old containers and cleaning up..."
             docker compose down --remove-orphans || true
-            docker compose up -d --build
 
-            echo "Pruning unused Docker images to save disk space..."
+            echo "Building fresh images and recreating containers..."
+            docker compose up -d --build --force-recreate
+
+            echo "Verifying backend and database connection..."
+            SUCCESS=0
+            for i in {1..12}; do
+              sleep 5
+              if docker logs snapfind-backend 2>&1 | grep -q "Started BackendApplication"; then
+                echo "========================================================"
+                echo "SUCCESS: Spring Boot connected to RDS Database and is LIVE!"
+                echo "========================================================"
+                SUCCESS=1
+                break
+              fi
+              echo "Waiting for DB connection and app startup... ($((i*5))s)"
+            done
+
+            if [ $SUCCESS -eq 0 ]; then
+              echo "WARNING: Backend may still be initializing or encountered an issue. Showing recent logs:"
+              docker logs snapfind-backend --tail 40
+            fi
+
+            echo "Pruning old containers, dangling images, and build cache for optimization..."
+            docker container prune -f
             docker image prune -f
+            docker builder prune -f --keep-storage 2GB || true
 
             echo "Deployment completed successfully!"
