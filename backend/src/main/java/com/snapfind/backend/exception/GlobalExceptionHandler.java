@@ -62,10 +62,12 @@ public class GlobalExceptionHandler {
     //500 Catch all
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
+        ex.printStackTrace();
+        String msg = (ex.getMessage() != null && !ex.getMessage().isBlank())
+                ? ex.getMessage()
+                : "Something went wrong. Please try again.";
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                new ErrorResponse(500,
-                        "Something went wrong. Please try again.",
-                        LocalDateTime.now())
+                new ErrorResponse(500, msg, LocalDateTime.now())
         );
     }
 }
