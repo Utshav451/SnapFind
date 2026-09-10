@@ -55,15 +55,15 @@ jobs:
             AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
             EOF
 
-            echo "Stopping old containers and cleaning up..."
-            docker compose down --remove-orphans || true
+            echo "Stopping old containers and removing ALL old images..."
+            docker compose down --remove-orphans --rmi all || true
 
             echo "Clearing any corrupted Docker builder cache..."
             docker builder prune -af || true
 
-            echo "Building fresh images without corrupted cache..."
+            echo "Building fresh images from scratch..."
             docker compose build --no-cache
-            docker compose up -d --force-recreate
+            docker compose up -d
 
             echo "Verifying backend and database connection..."
             SUCCESS=0
