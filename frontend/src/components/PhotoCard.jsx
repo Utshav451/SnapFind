@@ -25,8 +25,15 @@ export default function PhotoCard({ photo, showDelete, onDelete }) {
 
   return (
     <div className="photo-card">
+      {/* PREVIOUS LOCALHOST CODE:
       <img
         src={`http://localhost:8080${photo.fileUrl}`}
+        alt={photo.originalName}
+        className="photo-card-img"
+      />
+      */}
+      <img
+        src={photo.fileUrl}
         alt={photo.originalName}
         className="photo-card-img"
       />
