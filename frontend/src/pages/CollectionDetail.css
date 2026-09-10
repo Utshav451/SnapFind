@@ -52,6 +52,19 @@
   letter-spacing: 0.05em;
 }
 
+.cd-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.cd-copied-btn {
+  background-color: #10b981 !important;
+  border-color: #059669 !important;
+  color: #ffffff !important;
+}
+
 .cd-upload-box {
   background-color: #fff;
   border: 2px dashed #d1d5db;

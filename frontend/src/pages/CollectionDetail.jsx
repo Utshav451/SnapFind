@@ -80,10 +80,45 @@ export default function CollectionDetail() {
     }
   };
 
-  const handleCopyKey = () => {
-    navigator.clipboard.writeText(collection.uniqueKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyKey = async () => {
+    const textToCopy = collection?.uniqueKey;
+    if (!textToCopy) return;
+
+    let successful = false;
+
+    // Try modern Clipboard API (available in HTTPS or localhost)
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        successful = true;
+      } catch (err) {
+        console.warn("navigator.clipboard failed, attempting fallback...", err);
+      }
+    }
+
+    // Fallback for HTTP contexts (e.g. EC2 public IP without SSL)
+    if (!successful) {
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        textArea.setAttribute("readonly", "");
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        successful = document.execCommand("copy");
+        document.body.removeChild(textArea);
+      } catch (err) {
+        console.error("Fallback clipboard copy failed:", err);
+      }
+    }
+
+    if (successful) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (loading) return (
@@ -127,19 +162,19 @@ export default function CollectionDetail() {
             <span className="cd-key-value">{collection?.uniqueKey}</span>
           </div>
           <button
-  className="btn-primary"
-  onClick={handleCopyKey}
->
-  {copied ? (
-    <>
-      <FontAwesomeIcon icon={faCheck} size="lg" /> Copied!
-    </>
-  ) : (
-    <>
-      <FontAwesomeIcon icon={faCopy} size="lg" /> Copy Key
-    </>
-  )}
-</button>
+            className={`btn-primary cd-copy-btn ${copied ? "cd-copied-btn" : ""}`}
+            onClick={handleCopyKey}
+          >
+            {copied ? (
+              <>
+                <FontAwesomeIcon icon={faCheck} /> Copied
+              </>
+            ) : (
+              <>
+                <FontAwesomeIcon icon={faCopy} /> Copy
+              </>
+            )}
+          </button>
         </div>
 
         {/* Upload section */}
